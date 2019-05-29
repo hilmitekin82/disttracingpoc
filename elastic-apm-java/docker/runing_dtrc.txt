@@ -1,0 +1,88 @@
+version: '3'
+
+services:
+  user-microservice:
+    image: apm-java/app:1.0.0
+    build:
+      context: ../
+      dockerfile: docker/java/Dockerfile
+    environment:
+      - "ELASTIC_APM_SERVICE_NAME=bawaba-service"
+      - "ELASTIC_APM_APPLICATION_PACKAGES=com.cosmin.tutorials.apm"
+      - "ELASTIC_APM_SERVER_URLS=http://apm:8200"
+    ports:
+      - 8080:8080
+    links:
+      - apm
+      - mysql
+  kibana:
+    image: kibana:6.5.2
+    environment:
+      - "LOGGING_QUIET=true"
+    links:
+      - elasticsearch
+    ports:
+      - 5601:5601
+
+  elasticsearch:
+    image: apm-java/elasticsearch:1.0.0
+    build:
+      context: elasticsearch
+      dockerfile: Dockerfile
+    environment:
+      - cluster.name=apm-java
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - 9200:9200
+
+  apm:
+    image: apm-java/apm-server:1.0.0
+    build:
+      context: apm-server
+      dockerfile: Dockerfile
+    ports:
+      - 8200:8200
+    links:
+      - elasticsearch
+      - kibana
+  mysql:
+    image: mysql:8.0.13
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: qazxsw
+      MYSQL_DATABASE: users
+      MYSQL_USER: app
+      MYSQL_PASSWORD: ecvbjkl9876t
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports: 
+      - 8081:80
+    links:
+      - mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: qazxsw
+      MYSQL_DATABASE: users
+      MYSQL_USER: app
+      MYSQL_PASSWORD: ecvbjkl9876t
+      PMA_HOST: mysql
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:7.1.1
+    command: ["--strict.perms=false", "-system.hostfs=/hostfs"]
+    user: root
+    volumes:
+      #- "/:/hostfs:ro"
+      - /c/workspace/tutorials/elastic-apm-java/docker/metricbeats/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /proc:/hostfs/proc:ro
+      
+    environment:
+      - KIBANA_HOST=kibana
+      - ELASTICSEARCH_HOST=elasticsearch
