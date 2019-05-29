@@ -6,7 +6,6 @@ RUN wget -O apm-agent.jar https://search.maven.org/remotecontent?filepath=co/ela
 RUN jar -xvf target/apm-0.0.1-SNAPSHOT.jar && cd BOOT-INF/lib \
     && for FILE in `find`;do jdeps --list-deps $FILE | grep -E 'java.|jdk.' | tee -a java.output;done \
     && tr -d [:blank:] < java.output | tr "\n" "," > java.output.comma \
-    && cat  java.output.comma \
     && jlink \
         --verbose \
         --module-path "$JAVA_HOME/jmods" \
