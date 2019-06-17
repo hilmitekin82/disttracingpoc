@@ -2,7 +2,7 @@ version: '3'
 
 services:
   user-microservice:
-    image: apm-java/app:1.0.1
+    image: apm-java/app:1.2
     build:
       context: ../
       dockerfile: docker/java/Dockerfile
