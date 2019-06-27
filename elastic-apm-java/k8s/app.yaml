@@ -1,0 +1,31 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: hello-api
+spec:
+  selector:
+    app: hello-api
+  ports:
+  - protocol: TCP
+    port: 8080
+    nodePort: 31002
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-api
+spec:
+  selector:
+      matchLabels:
+        app: hello-api
+  template:
+    metadata:
+      labels:
+        app: hello-api
+    spec:
+      containers:
+        - name: hello-api
+          image: docker.io/hilmit82/app-alpine-opt-jre11
+          ports:
+            - containerPort: 8080

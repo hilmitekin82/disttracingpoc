@@ -1,0 +1,78 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apm-server-config
+data:
+  apm-server.yml: |-
+    apm-server:
+      host: "0.0.0.0:8200"
+    output.elasticsearch:
+      hosts: ['elasticsearch:9200']
+      indices:
+        - index: "apm-%{[observer.version]}-sourcemap"
+          when.contains:
+            processor.event: "sourcemap"
+
+        - index: "apm-%{[observer.version]}-error-%{+yyyy.MM.dd}"
+          when.contains:
+            processor.event: "error"
+
+        - index: "apm-%{[observer.version]}-transaction-%{+yyyy.MM.dd}"
+          when.contains:
+            processor.event: "transaction"
+
+        - index: "apm-%{[observer.version]}-span-%{+yyyy.MM.dd}"
+          when.contains:
+            processor.event: "span"
+
+        - index: "apm-%{[observer.version]}-metric-%{+yyyy.MM.dd}"
+          when.contains:
+            processor.event: "metric"
+
+        - index: "apm-%{[observer.version]}-onboarding-%{+yyyy.MM.dd}"
+          when.contains:
+            processor.event: "onboarding"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apm-server
+  labels:
+    app: apm-server
+spec:
+  ports:
+  - port: 8200
+    targetPort: 8200
+    name: http
+  selector:
+    app: apm-server
+  type: NodePort
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: apm-server
+spec:
+  template:
+    metadata:
+      labels:
+        app: apm-server
+    spec:
+      containers:
+      - name: apm-server
+        image: docker.io/hilmit82/apm-server:7.1.1
+        ports:
+        - containerPort: 8200
+          protocol: TCP
+          name: apm-port
+        volumeMounts:
+        - name: apm-v
+          mountPath: /usr/share/apm-server/apm-server.yml
+          readOnly: true
+          subPath: apm-server.yml
+      volumes:
+      - name: apm-v
+        configMap:
+          defaultMode: 0444
+          name: apm-server-config

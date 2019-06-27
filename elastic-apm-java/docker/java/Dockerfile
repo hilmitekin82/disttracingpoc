@@ -1,4 +1,4 @@
-FROM hilmit82/jdk11-maven-builder:alpine3.9 AS builder
+FROM docker.io/hilmit82/jdk11-maven-builder:alpine3.9 AS builder
 WORKDIR /app
 COPY service/ /app
 RUN mvn package

@@ -1,0 +1,41 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: user-service-api
+spec:
+  selector:
+    app: user-service-api
+  ports:
+  - protocol: TCP
+    port: 8080
+    nodePort: 31001
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service-api
+spec:
+  selector:
+      matchLabels:
+        app: user-service-api
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: user-service-api
+    spec:
+      containers:
+        - name: user-service-api
+          image: docker.io/hilmit82/user-service:1.0.0
+          env:
+            - name: ELASTIC_APM_SERVICE_NAME
+              value: user-service-api
+            - name: ELASTIC_APM_APPLICATION_PACKAGES
+              value: com.cosmin.tutorials.apm
+            - name: ELASTIC_APM_SERVER_URLS
+              value: http://apm-server:8200
+            - name: ELASTIC_APM_LOG_LEVEL
+              value: DEBUG
+          ports:
+            - containerPort: 8080
