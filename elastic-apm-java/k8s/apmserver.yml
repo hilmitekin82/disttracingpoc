@@ -8,7 +8,7 @@ data:
     apm-server:
       host: "0.0.0.0:8200"
     output.elasticsearch:
-      hosts: ['elasticsearch:9200']
+      hosts: ['elasticsearch-loadbalancer:9200']
       indices:
         - index: "apm-%{[observer.version]}-sourcemap"
           when.contains:
@@ -61,7 +61,7 @@ spec:
     spec:
       containers:
       - name: apm-server
-        image: docker.io/hilmit82/apm-server:7.1.1
+        image: docker.elastic.co/apm/apm-server:7.1.1 # use docker.io/hilmit82/apm-server:7.1.1 image for OpenShift
         ports:
         - containerPort: 8200
           protocol: TCP

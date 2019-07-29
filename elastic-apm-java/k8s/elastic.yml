@@ -3,13 +3,14 @@ kind: Service
 metadata:
   name: elasticsearch-loadbalancer
 spec:
+  type: NodePort
   selector:
     app: es-cluster
   ports:
-  - name: http
-    port: 80
-    targetPort: 9200
-  type: LoadBalancer
+    - port: 9200
+      name: http
+    - port: 9300
+      name: node-to-node
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -38,6 +39,31 @@ spec:
       labels:
         app: es-cluster
     spec:
+      initContainers:
+        # Fix the permissions on the volume.
+        # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#_notes_for_production_use_and_defaults
+        - name: fix-the-volume-permission
+          image: busybox
+          command: ['sh', '-c', 'chown -R 1000:1000 /usr/share/elasticsearch/data']
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: es-data-03
+              mountPath: /usr/share/elasticsearch/data
+        # Increase the default vm.max_map_count to 262144
+        # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-cli-run-prod-mode
+        - name: increase-the-vm-max-map-count
+          image: busybox
+          command: ['sysctl', '-w', 'vm.max_map_count=262144']
+          securityContext:
+            privileged: true
+        # Increase the ulimit
+        # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#_notes_for_production_use_and_defaults
+        - name: increase-the-ulimit
+          image: busybox
+          command: ['sh', '-c', 'ulimit -n 65536']
+          securityContext:
+            privileged: true
       containers:
       - name: elasticsearch
         resources:
@@ -50,17 +76,24 @@ spec:
               configMapKeyRef:
                   name: es-config
                   key: ES_JAVA_OPTS
-        readinessProbe:
-          httpGet:
-            scheme: HTTP
-            path: /_cluster/health?local=true
-            port: 9200
-          initialDelaySeconds: 5
         ports:
-        - containerPort: 9200
-          name: es-http
+            - containerPort: 9200
+              name: http
+            - containerPort: 9300
+              name: transport
+        livenessProbe:
+            tcpSocket:
+              port: transport
+            initialDelaySeconds: 20
+            periodSeconds: 10
+        readinessProbe:
+            httpGet:
+              path: /_cluster/health
+              port: http
+            initialDelaySeconds: 20
+            timeoutSeconds: 5
         volumeMounts:
-        - name: es-data-02
+        - name: es-data-03
           mountPath: /usr/share/elasticsearch/data
         - name: elasticsearch-config-01
           mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
@@ -74,7 +107,7 @@ spec:
                 path: elasticsearch.yml
   volumeClaimTemplates:
   - metadata:
-      name: es-data-02
+      name: es-data-03
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:

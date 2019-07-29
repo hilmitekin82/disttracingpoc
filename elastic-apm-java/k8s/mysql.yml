@@ -28,11 +28,12 @@ kind: StatefulSet
 metadata:
   name: mysql
 spec:
+  serviceName: mysql
+  updateStrategy:
+    type: RollingUpdate
   selector:
     matchLabels:
       app: mysql
-  strategy:
-    type: Recreate
   template:
     metadata:
       labels:
